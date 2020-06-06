@@ -1,98 +1,75 @@
-import React from 'react';
-import omit from 'omit.js';
-import classNames from 'classnames';
-import { AbstractInputProps } from './Input';
-import calculateNodeHeight from './calculateNodeHeight';
-
-function onNextFrame(cb) {
-  if (window.requestAnimationFrame) {
-    return window.requestAnimationFrame(cb);
-  }
-  return window.setTimeout(cb, 1);
-}
-
-function clearNextFrameAction(nextFrameId) {
-  if (window.cancelAnimationFrame) {
-    window.cancelAnimationFrame(nextFrameId);
-  } else {
-    window.clearTimeout(nextFrameId);
-  }
-}
-
-export interface AutoSizeType {
-  minRows?: number;
-  maxRows?: number;
-}
-
-export interface TextAreaProps extends AbstractInputProps {
-  autosize?: boolean | AutoSizeType;
-  onPressEnter?: React.FormEventHandler<any>;
-}
+import * as React from 'react';
+import ClearableLabeledInput from './ClearableLabeledInput';
+import ResizableTextArea, { AutoSizeType } from './ResizableTextArea';
+import { ConfigConsumer, ConfigConsumerProps } from '../config-provider';
+import { fixControlledValue, resolveOnChange } from './Input';
 
 export type HTMLTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
-export default class TextArea extends React.Component<TextAreaProps & HTMLTextareaProps, any> {
-  static defaultProps = {
-    prefixCls: 'ant-input',
-  };
+export interface TextAreaProps extends HTMLTextareaProps {
+  prefixCls?: string;
+  autoSize?: boolean | AutoSizeType;
+  onPressEnter?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  allowClear?: boolean;
+  onResize?: (size: { width: number; height: number }) => void;
+}
 
-  nextFrameActionId: number;
-  textAreaRef: HTMLTextAreaElement;
-  state = {
-    textareaStyles: null,
-  };
+export interface TextAreaState {
+  value: any;
+}
 
-  componentDidMount() {
-    this.resizeTextarea();
+class TextArea extends React.Component<TextAreaProps, TextAreaState> {
+  resizableTextArea: ResizableTextArea;
+
+  clearableInput: ClearableLabeledInput;
+
+  constructor(props: TextAreaProps) {
+    super(props);
+    const value = typeof props.value === 'undefined' ? props.defaultValue : props.value;
+    this.state = {
+      value,
+    };
   }
 
-  componentWillReceiveProps(nextProps) {
-    // Re-render with the new content then recalculate the height as required.
-    if (this.props.value !== nextProps.value) {
-      if (this.nextFrameActionId) {
-        clearNextFrameAction(this.nextFrameActionId);
-      }
-      this.nextFrameActionId = onNextFrame(this.resizeTextarea);
+  static getDerivedStateFromProps(nextProps: TextAreaProps) {
+    if ('value' in nextProps) {
+      return {
+        value: nextProps.value,
+      };
+    }
+    return null;
+  }
+
+  setValue(value: string, callback?: () => void) {
+    if (!('value' in this.props)) {
+      this.setState({ value }, callback);
     }
   }
 
-  focus() {
-    this.textAreaRef.focus();
-  }
+  focus = () => {
+    this.resizableTextArea.textArea.focus();
+  };
 
   blur() {
-    this.textAreaRef.blur();
+    this.resizableTextArea.textArea.blur();
   }
 
-  resizeTextarea = () => {
-    const { autosize } = this.props;
-    if (!autosize || !this.textAreaRef) {
-      return;
-    }
-    const minRows = autosize ? (autosize as AutoSizeType).minRows : null;
-    const maxRows = autosize ? (autosize as AutoSizeType).maxRows : null;
-    const textareaStyles = calculateNodeHeight(this.textAreaRef, false, minRows, maxRows);
-    this.setState({ textareaStyles });
-  }
+  saveTextArea = (resizableTextArea: ResizableTextArea) => {
+    this.resizableTextArea = resizableTextArea;
+  };
 
-  getTextAreaClassName() {
-    const { prefixCls, disabled } = this.props;
-    return classNames(prefixCls, {
-      [`${prefixCls}-disabled`]: disabled,
+  saveClearableInput = (clearableInput: ClearableLabeledInput) => {
+    this.clearableInput = clearableInput;
+  };
+
+  handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    this.setValue(e.target.value, () => {
+      this.resizableTextArea.resizeTextarea();
     });
-  }
+    resolveOnChange(this.resizableTextArea.textArea, e, this.props.onChange);
+  };
 
-  handleTextareaChange = (e) => {
-    if (!('value' in this.props)) {
-      this.resizeTextarea();
-    }
-    const { onChange } = this.props;
-    if (onChange) {
-      onChange(e);
-    }
-  }
-
-  handleKeyDown = (e) => {
+  handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const { onPressEnter, onKeyDown } = this.props;
     if (e.keyCode === 13 && onPressEnter) {
       onPressEnter(e);
@@ -100,37 +77,50 @@ export default class TextArea extends React.Component<TextAreaProps & HTMLTextar
     if (onKeyDown) {
       onKeyDown(e);
     }
-  }
+  };
 
-  saveTextAreaRef = (textArea) => {
-    this.textAreaRef = textArea;
-  }
+  handleReset = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+    this.setValue('', () => {
+      this.resizableTextArea.renderTextArea();
+      this.focus();
+    });
+    resolveOnChange(this.resizableTextArea.textArea, e, this.props.onChange);
+  };
 
-  render() {
-    const props = this.props;
-    const otherProps = omit(props, [
-      'prefixCls',
-      'onPressEnter',
-      'autosize',
-    ]);
-    const style = {
-      ...props.style,
-      ...this.state.textareaStyles,
-    };
-    // Fix https://github.com/ant-design/ant-design/issues/6776
-    // Make sure it could be reset when using form.getFieldDecorator
-    if ('value' in otherProps) {
-      otherProps.value = otherProps.value || '';
-    }
+  renderTextArea = (prefixCls: string) => {
     return (
-      <textarea
-        {...otherProps}
-        className={classNames(this.getTextAreaClassName(), props.className)}
-        style={style}
+      <ResizableTextArea
+        {...this.props}
+        prefixCls={prefixCls}
         onKeyDown={this.handleKeyDown}
-        onChange={this.handleTextareaChange}
-        ref={this.saveTextAreaRef}
+        onChange={this.handleChange}
+        ref={this.saveTextArea}
       />
     );
+  };
+
+  renderComponent = ({ getPrefixCls, direction }: ConfigConsumerProps) => {
+    const { value } = this.state;
+    const { prefixCls: customizePrefixCls } = this.props;
+    const prefixCls = getPrefixCls('input', customizePrefixCls);
+    return (
+      <ClearableLabeledInput
+        {...this.props}
+        prefixCls={prefixCls}
+        direction={direction}
+        inputType="text"
+        value={fixControlledValue(value)}
+        element={this.renderTextArea(prefixCls)}
+        handleReset={this.handleReset}
+        ref={this.saveClearableInput}
+        triggerFocus={this.focus}
+      />
+    );
+  };
+
+  render() {
+    return <ConfigConsumer>{this.renderComponent}</ConfigConsumer>;
   }
 }
+
+export default TextArea;

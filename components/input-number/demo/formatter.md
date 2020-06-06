@@ -1,8 +1,8 @@
 ---
 order: 4
 title:
-    zh-CN: 格式化展示
-    en-US: Formatter
+  zh-CN: 格式化展示
+  en-US: Formatter
 ---
 
 ## zh-CN
@@ -13,7 +13,7 @@ title:
 
 Display value within it's situation with `formatter`, and we usually use `parser` at the same time.
 
-````jsx
+```jsx
 import { InputNumber } from 'antd';
 
 function onChange(value) {
@@ -24,7 +24,7 @@ ReactDOM.render(
   <div>
     <InputNumber
       defaultValue={1000}
-      formatter={value => `$ ${value.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`}
+      formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
       parser={value => value.replace(/\$\s?|(,*)/g, '')}
       onChange={onChange}
     />
@@ -36,6 +36,7 @@ ReactDOM.render(
       parser={value => value.replace('%', '')}
       onChange={onChange}
     />
-  </div>
-, mountNode);
-````
+  </div>,
+  mountNode,
+);
+```

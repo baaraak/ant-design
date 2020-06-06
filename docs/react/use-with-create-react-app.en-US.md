@@ -9,20 +9,17 @@ title: Use in create-react-app
 
 ## Install and Initialization
 
-We need to install `create-react-app` first, you may need install [yarn](https://github.com/yarnpkg/yarn/) too.
+Before all start, you may need install [yarn](https://github.com/yarnpkg/yarn/).
 
 ```bash
-$ npm install -g create-react-app yarn
+$ yarn create react-app antd-demo
+
+# or
+
+$ npx create-react-app antd-demo
 ```
 
-Create a new project named `antd-demo`.
-
-```bash
-$ create-react-app antd-demo
-```
-
-The tool will create and initialize environment and dependencies automaticly,
-please try config your proxy setting or use other npm registry if any network errors happen during it.
+The tool will create and initialize environment and dependencies automatically, please try config your proxy setting or use another npm registry if any network errors happen during it.
 
 Then we go inside `antd-demo` and start it.
 
@@ -62,19 +59,15 @@ $ yarn add antd
 Modify `src/App.js`, import Button component from `antd`.
 
 ```jsx
-import React, { Component } from 'react';
-import Button from 'antd/lib/button';
+import React from 'react';
+import { Button } from 'antd';
 import './App.css';
 
-class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <Button type="primary">Button</Button>
-      </div>
-    );
-  }
-}
+const App = () => (
+  <div className="App">
+    <Button type="primary">Button</Button>
+  </div>
+);
 
 export default App;
 ```
@@ -83,168 +76,99 @@ Add `antd/dist/antd.css` at the top of `src/App.css`.
 
 ```css
 @import '~antd/dist/antd.css';
-
-.App {
-  text-align: center;
-}
-
-...
 ```
 
-Ok, you now see a blue primary button displaying on the page. Next you can choose any components of `antd` to develop your application. Visit other workflow of `create-react-app` at its [User Guide ](https://github.com/facebookincubator/create-react-app/blob/master/packages/react-scripts/template/README.md).
+Ok, you should now see a blue primary button displayed on the page. Next you can choose any components of `antd` to develop your application. Visit other workflows of `create-react-app` at its [User Guide](https://create-react-app.dev/docs/getting-started).
 
+We are successfully running antd components now, go build your own application!
 
 ## Advanced Guides
 
-We are successfully running antd components now but in the real world, there are still lots of problems about antd-demo.
-For instance, we actually import all styles of components in the project which maybe a network perfermance issue.
+In the real world, we usually have to modify default webpack config for custom needs such as themes. We can achieve that by using [craco](https://github.com/gsoft-inc/craco) which is one of create-react-app's custom config solutions.
 
-Sometimes it could be necessary to customize the default webpack config. We can achieve that by using `eject` script command.
-
-```bash
-$ yarn run eject
-```
-
-### Use babel-plugin-import
-
-[babel-plugin-import](https://github.com/ant-design/babel-plugin-import) is a babel plugin for importing components on demand ([principle](/docs/react/getting-started#Import-on-Demand)). After ejecting all config files of antd-demo, we are now allowed to install it and modify `config/webpack.config.dev.js`.
+Install craco and modify the `scripts` field in `package.json`.
 
 ```bash
-$ yarn add babel-plugin-import --dev
+$ yarn add @craco/craco
 ```
 
 ```diff
-// Process JS with Babel.
-{
-  test: /\.(js|jsx)$/,
-  include: paths.appSrc,
-  loader: require.resolve('babel-loader'),
-  options: {
-+   plugins: [
-+     ['import', { libraryName: 'antd', style: 'css' }],
-+   ],
-    // This is a feature of `babel-loader` for webpack (not Babel itself).
-    // It enables caching results in ./node_modules/.cache/babel-loader/
-    // directory for faster rebuilds.
-    cacheDirectory: true
-  }
-},
+/* package.json */
+"scripts": {
+-   "start": "react-scripts start",
+-   "build": "react-scripts build",
+-   "test": "react-scripts test",
++   "start": "craco start",
++   "build": "craco build",
++   "test": "craco test",
+}
 ```
 
-> Note: Because there is no `.babelrc` file after the config eject, we have to put the babel option into `webpack.config.js` or `babel` field of `package.json`.
+Then create a `craco.config.js` at root directory of your project for further overriding.
 
-Remove the `@import '~antd/dist/antd.css';` statement added before because `babel-plugin-import` will import styles and import components like below:
-
-```diff
-  // scr/App.js
-  import React, { Component } from 'react';
-- import Button from 'antd/lib/button';
-+ import { Button } from 'antd';
-  import './App.css';
-
-  class App extends Component {
-    render() {
-      return (
-        <div className="App">
-          <Button type="primary">Button</Button>
-        </div>
-      );
-    }
-  }
-
-  export default App;
+```js
+/* craco.config.js */
+module.exports = {
+  // ...
+};
 ```
-
-Then reboot `yarn start` and visit demo page, you should not find any [warning message](https://zos.alipayobjects.com/rmsportal/vgcHJRVZFmPjAawwVoXK.png) in the console which prove that the `import on demand` config is working now. You will find more info about it in [this guide](/docs/react/getting-started#Import-on-Demand).
 
 ### Customize Theme
 
-According to [Customize Theme documentation](/docs/react/customize-theme), we need `less` variables modify ability of [less-loader](https://github.com/webpack/less-loader), so we add it.
+According to the [Customize Theme documentation](/docs/react/customize-theme), we need to modify less variables via loader like [less-loader](https://github.com/webpack/less-loader). We can use [craco-less](https://github.com/DocSpring/craco-less) to achieve that,
 
-```bash
-$ yarn add less less-loader --dev
+First we should modify `src/App.css` to `src/App.less`, then import less file instead.
+
+```diff
+/* src/App.js */
+- import './App.css';
++ import './App.less';
 ```
 
 ```diff
-  {
-    exclude: [
-      /\.html$/,
-      /\.(js|jsx)$/,
-      /\.css$/,
-+     /\.less$/,
-      /\.json$/,
-      /\.bmp$/,
-      /\.gif$/,
-      /\.jpe?g$/,
-      /\.png$/,
-    ],
-    loader: require.resolve('file-loader'),
-    options: {
-      name: 'static/media/[name].[hash:8].[ext]',
-    },
-  }
-
-...
-
-  // Process JS with Babel.
-  {
-    test: /\.(js|jsx)$/,
-    include: paths.appSrc,
-    loader: 'babel',
-    options: {
-      plugins: [
--       ['import', [{ libraryName: 'antd', style: 'css' }]],
-+       ['import', [{ libraryName: 'antd', style: true }]],  // import less
-      ],
-   },
-
-...
-
-+  // Parse less files and modify variables
-+  {
-+    test: /\.less$/,
-+    use: [
-+      require.resolve('style-loader'),
-+      require.resolve('css-loader'),
-+      {
-+        loader: require.resolve('postcss-loader'),
-+        options: {
-+          ident: 'postcss', // https://webpack.js.org/guides/migrating/#complex-options
-+          plugins: () => [
-+            require('postcss-flexbugs-fixes'),
-+            autoprefixer({
-+              browsers: [
-+                '>1%',
-+                'last 4 versions',
-+                'Firefox ESR',
-+                'not ie < 9', // React doesn't support IE8 anyway
-+              ],
-+              flexbox: 'no-2009',
-+            }),
-+          ],
-+        },
-+      },
-+      {
-+        loader: require.resolve('less-loader'),
-+        options: {
-+          modifyVars: { "@primary-color": "#1DA57A" },
-+        },
-+      },
-+    ],
-+  },
-],
+/* src/App.less */
+- @import '~antd/dist/antd.css';
++ @import '~antd/dist/antd.less';
 ```
 
-We use `modifyVars` option of [less-loader](https://github.com/webpack/less-loader#less-options) here, you can see a green button rendered on the page after reboot start server.
+Then install `craco-less` and modify `craco.config.js` like below.
 
-> Note, we only modified `webpack.config.dev.js` now, if you wish this config working on production environment, you need to update `webpack.config.prod.js` as well.
+```bash
+$ yarn add craco-less
+```
 
-## Source code and other boilerplates
+```js
+const CracoLessPlugin = require('craco-less');
 
-Finally, we used antd with create-react-app successfully, you can learn these practice for your own webpack workflow too, and find more webpack configs in the [atool-build](https://github.com/ant-tool/atool-build/blob/master/src/getWebpackCommonConfig.js). (For instance, add [moment noParse](https://github.com/ant-tool/atool-build/blob/e4bd2959689b6a95cb5c1c854a5db8c98676bdb3/src/getWebpackCommonConfig.js#L90) to avoid loading all language files)
+module.exports = {
+  plugins: [
+    {
+      plugin: CracoLessPlugin,
+      options: {
+        lessLoaderOptions: {
+          lessOptions: {
+            modifyVars: { '@primary-color': '#1DA57A' },
+            javascriptEnabled: true,
+          },
+        },
+      },
+    },
+  ],
+};
+```
 
-There are a lot of great boilerplates like create-react-app in React community. There are some source code samples of importing antd in them if you encounter some problems.
+By adding `modifyVars` option of [less-loader](https://github.com/webpack/less-loader#less-options) here, we should see a green button rendered on the page after rebooting the server now.
 
-- [create-react-app-antd](https://github.com/ant-design/create-react-app-antd)
-- [react-boilerplate/react-boilerplate](https://github.com/ant-design/react-boilerplate)
-- [kriasoft/react-starter-kit](https://github.com/ant-design/react-starter-kit)
+We provide built-in dark theme and compact theme in antd, you can reference to [Use dark or compact theme](/docs/react/customize-theme#Use-dark-or-compact-theme).
+
+> You could also try [react-scripts-rewired](https://github.com/timarney/react-app-rewired) and [customize-cra](https://github.com/arackaf/customize-cra) to customize create-react-app webpack config like craco did.
+
+## eject
+
+You can also eject your application using [yarn run eject](https://facebook.github.io/create-react-app/docs/available-scripts#npm-run-eject) for a custom setup of create-react-app, although you should dig into it by yourself.
+
+## Summary
+
+Finally, we used antd with create-react-app successfully, the source code of this guide was pushed to [create-react-app-antd](https://github.com/ant-design/create-react-app-antd) which you could clone and use it directly.
+
+Next part, We will introduce how to use antd in [TypeScript](/docs/react/use-in-typescript) and [Umi](/docs/react/practical-projects), let's keep moving!

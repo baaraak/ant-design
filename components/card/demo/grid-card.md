@@ -13,7 +13,7 @@ title:
 
 Grid style card content.
 
-````jsx
+```jsx
 import { Card } from 'antd';
 
 const gridStyle = {
@@ -22,14 +22,17 @@ const gridStyle = {
 };
 
 ReactDOM.render(
-  <Card title="卡片标题" noHovering bodyStyle={{ padding: 0 }}>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-    <Card.Grid style={gridStyle}>卡片内容</Card.Grid>
-  </Card>
-, mountNode);
-````
+  <Card title="Card Title">
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+    <Card.Grid hoverable={false} style={gridStyle}>
+      Content
+    </Card.Grid>
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+    <Card.Grid style={gridStyle}>Content</Card.Grid>
+  </Card>,
+  mountNode,
+);
+```

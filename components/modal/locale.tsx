@@ -1,14 +1,16 @@
-const defaultLocale = {
-  okText: '确定',
-  cancelText: '取消',
-  justOkText: '知道了',
+import defaultLocale from '../locale/default';
+
+export interface ModalLocale {
+  okText: string;
+  cancelText: string;
+  justOkText: string;
+}
+
+let runtimeLocale: ModalLocale = {
+  ...(defaultLocale.Modal as ModalLocale),
 };
 
-let runtimeLocale = {
-  ...defaultLocale,
-};
-
-export function changeConfirmLocale(newLocale?: Object) {
+export function changeConfirmLocale(newLocale?: ModalLocale) {
   if (newLocale) {
     runtimeLocale = {
       ...runtimeLocale,
@@ -16,7 +18,7 @@ export function changeConfirmLocale(newLocale?: Object) {
     };
   } else {
     runtimeLocale = {
-      ...defaultLocale,
+      ...(defaultLocale.Modal as ModalLocale),
     };
   }
 }

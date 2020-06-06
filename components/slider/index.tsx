@@ -1,25 +1,44 @@
-import React from 'react';
+import * as React from 'react';
 import RcSlider from 'rc-slider/lib/Slider';
 import RcRange from 'rc-slider/lib/Range';
 import RcHandle from 'rc-slider/lib/Handle';
-import Tooltip from '../tooltip';
+import classNames from 'classnames';
+import { TooltipPlacement } from '../tooltip';
+import SliderTooltip from './SliderTooltip';
+import { ConfigContext } from '../config-provider';
 
 export interface SliderMarks {
-  [key: number]: React.ReactNode | {
-    style: React.CSSProperties,
-    label: React.ReactNode,
-  };
+  [key: number]:
+    | React.ReactNode
+    | {
+        style: React.CSSProperties;
+        label: React.ReactNode;
+      };
 }
 
 export type SliderValue = number | [number, number];
+
+interface HandleGeneratorInfo {
+  value: number;
+  dragging: boolean;
+  index: number;
+  rest: any[];
+}
+
+export type HandleGeneratorFn = (config: {
+  tooltipPrefixCls?: string;
+  prefixCls?: string;
+  info: HandleGeneratorInfo;
+}) => React.ReactNode;
 
 export interface SliderProps {
   prefixCls?: string;
   tooltipPrefixCls?: string;
   range?: boolean;
+  reverse?: boolean;
   min?: number;
   max?: number;
-  step?: number | void;
+  step?: number | null;
   marks?: SliderMarks;
   dots?: boolean;
   value?: SliderValue;
@@ -29,60 +48,120 @@ export interface SliderProps {
   vertical?: boolean;
   onChange?: (value: SliderValue) => void;
   onAfterChange?: (value: SliderValue) => void;
-  tipFormatter?: void | ((value: number) => React.ReactNode);
+  tipFormatter?: null | ((value: number) => React.ReactNode);
+  className?: string;
+  id?: string;
+  style?: React.CSSProperties;
+  tooltipVisible?: boolean;
+  tooltipPlacement?: TooltipPlacement;
+  getTooltipPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
 
-export default class Slider extends React.Component<SliderProps, any> {
-  static defaultProps = {
-    prefixCls: 'ant-slider',
-    tooltipPrefixCls: 'ant-tooltip',
-    tipFormatter(value) {
-      return value.toString();
-    },
+export type Visibles = { [index: number]: boolean };
+
+const Slider = React.forwardRef<unknown, SliderProps>((props, ref) => {
+  const { getPrefixCls, direction, getPopupContainer } = React.useContext(ConfigContext);
+  const [visibles, setVisibles] = React.useState<Visibles>({});
+
+  const toggleTooltipVisible = (index: number, visible: boolean) => {
+    const temp = { ...visibles };
+    temp[index] = visible;
+    setVisibles(temp);
   };
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      visibles: {},
-    };
-  }
-
-  toggleTooltipVisible = (index, visible) => {
-    this.setState(({ visibles }) => ({
-      visibles: {
-        ...visibles,
-        [index]: visible,
-      },
-    }));
-  }
-  handleWithTooltip = ({ value, dragging, index, ...restProps }) => {
-    const { tooltipPrefixCls, tipFormatter } = this.props;
-    const { visibles } = this.state;
+  const handleWithTooltip: HandleGeneratorFn = ({
+    tooltipPrefixCls,
+    prefixCls,
+    info: { value, dragging, index, ...restProps },
+  }) => {
+    const {
+      tipFormatter,
+      tooltipVisible,
+      tooltipPlacement,
+      getTooltipPopupContainer,
+      vertical,
+    } = props;
+    const isTipFormatter = tipFormatter ? visibles[index] || dragging : false;
+    const visible = tooltipVisible || (tooltipVisible === undefined && isTipFormatter);
     return (
-      <Tooltip
+      <SliderTooltip
         prefixCls={tooltipPrefixCls}
         title={tipFormatter ? tipFormatter(value) : ''}
-        visible={tipFormatter && (visibles[index] || dragging)}
-        placement="top"
+        visible={visible}
+        placement={tooltipPlacement || (vertical ? 'right' : 'top')}
         transitionName="zoom-down"
         key={index}
+        overlayClassName={`${prefixCls}-tooltip`}
+        getPopupContainer={getTooltipPopupContainer || getPopupContainer || (() => document.body)}
       >
         <RcHandle
           {...restProps}
           value={value}
-          onMouseEnter={() => this.toggleTooltipVisible(index, true)}
-          onMouseLeave={() => this.toggleTooltipVisible(index, false)}
+          onMouseEnter={() => toggleTooltipVisible(index, true)}
+          onMouseLeave={() => toggleTooltipVisible(index, false)}
         />
-      </Tooltip>
+      </SliderTooltip>
+    );
+  };
+
+  const {
+    prefixCls: customizePrefixCls,
+    tooltipPrefixCls: customizeTooltipPrefixCls,
+    range,
+    className,
+    ...restProps
+  } = props;
+  const prefixCls = getPrefixCls('slider', customizePrefixCls);
+  const tooltipPrefixCls = getPrefixCls('tooltip', customizeTooltipPrefixCls);
+  const cls = classNames(className, {
+    [`${prefixCls}-rtl`]: direction === 'rtl',
+  });
+  // make reverse default on rtl direction
+  if (direction === 'rtl' && !restProps.vertical) {
+    restProps.reverse = !restProps.reverse;
+  }
+  if (range) {
+    return (
+      <RcRange
+        {...restProps}
+        className={cls}
+        ref={ref}
+        handle={(info: HandleGeneratorInfo) =>
+          handleWithTooltip({
+            tooltipPrefixCls,
+            prefixCls,
+            info,
+          })
+        }
+        prefixCls={prefixCls}
+        tooltipPrefixCls={tooltipPrefixCls}
+      />
     );
   }
+  return (
+    <RcSlider
+      {...restProps}
+      className={cls}
+      ref={ref}
+      handle={(info: HandleGeneratorInfo) =>
+        handleWithTooltip({
+          tooltipPrefixCls,
+          prefixCls,
+          info,
+        })
+      }
+      prefixCls={prefixCls}
+      tooltipPrefixCls={tooltipPrefixCls}
+    />
+  );
+});
 
-  render() {
-    const { range, ...restProps } = this.props;
-    if (range) {
-      return <RcRange {...restProps} handle={this.handleWithTooltip} />;
-    }
-    return <RcSlider {...restProps} handle={this.handleWithTooltip} />;
-  }
-}
+Slider.displayName = 'Slider';
+
+Slider.defaultProps = {
+  tipFormatter(value: number) {
+    return typeof value === 'number' ? value.toString() : '';
+  },
+};
+
+export default Slider;

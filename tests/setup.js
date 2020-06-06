@@ -1,13 +1,40 @@
-// fixed jsdom miss
+const React = require('react');
+
+// eslint-disable-next-line no-console
+console.log('Current React Version:', React.version);
+
+/* eslint-disable global-require */
 if (typeof window !== 'undefined') {
-  const matchMediaPolyfill = function matchMediaPolyfill() {
-    return {
-      matches: false,
-      addListener() {
-      },
-      removeListener() {
-      },
-    };
+  global.window.resizeTo = (width, height) => {
+    global.window.innerWidth = width || global.window.innerWidth;
+    global.window.innerHeight = height || global.window.innerHeight;
+    global.window.dispatchEvent(new Event('resize'));
   };
-  window.matchMedia = window.matchMedia || matchMediaPolyfill;
+  global.window.scrollTo = () => {};
+  // ref: https://github.com/ant-design/ant-design/issues/18774
+  if (!window.matchMedia) {
+    Object.defineProperty(global.window, 'matchMedia', {
+      value: jest.fn(query => ({
+        matches: query.includes('max-width'),
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+      })),
+    });
+  }
 }
+
+const Enzyme = require('enzyme');
+
+const Adapter = require('enzyme-adapter-react-16');
+
+Enzyme.configure({ adapter: new Adapter() });
+
+Object.assign(Enzyme.ReactWrapper.prototype, {
+  findObserver() {
+    return this.find('ResizeObserver');
+  },
+  triggerResize() {
+    const ob = this.findObserver();
+    ob.instance().onResize([{ target: ob.getDOMNode() }]);
+  },
+});
